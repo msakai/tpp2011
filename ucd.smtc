@@ -1,5 +1,7 @@
 ; z3 /smtc ucd.smtc
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (set-option :produce-models true)
 ;(set-option :produce-assignments true)
 
@@ -41,10 +43,6 @@
 ; Def. right(i) = (if (i < N) then (i+1) else 1).
 (define-fun right ((i Int)) Int (ite (< i N) (+ i 1) 1))
 
-; (declare-fun right-n (Int Int) Int)
-; (assert
-;   (forall ((n Int)) (=> (= n 0) (= (right-n i n) i))
-
 ; initial state
 (assert
   (forall ((i Int) (k Int))
@@ -73,6 +71,8 @@
 ; ;    (trans1 i k)
 ;     :pat { (m i k) } ))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ; Def. state invariant
 (define-fun state-inv ((k Int)) Bool
   (forall ((i Int))
@@ -93,7 +93,8 @@
     (=> (and (is-child i) (is-nat k)) (is-even-nat (m i k)))
     :pat { (m i k) } ))
 
-;; Experiments
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (declare-fun k () Int)
 (assert (is-nat k))
 
@@ -133,13 +134,15 @@
 
 ;  (5) if (min(k) < m(i,k)) for some i,
 ;      then num(min(k),k+1) < num(min(k),k),
+
 ; for each j
 ;   if min(k) < m(j,k) then min(k) < m(j,k+1) by (3)
 ;   if min(k) = m(j,k)
 ;     if min(k) = m(j,k) < m(right(j),k) then min(k) < m(j,k+1) by (4)
 ;     if not (m(j,k) < m(right(j),k)) then
 ;       min(k) = m(j,k) = m(right(j),k)
-; すべて最後のケースの場合に個数は変わらない。でも、それは前提に矛盾。
+; すべて最後のケースの場合に個数は変わらないが、
+; それは (min(k) < m(i,k)) という前提に矛盾する。
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; if (min(k) < m(i,k)) for some i, then min(k)=m(j,k)<m(j,k+1) for some j.
