@@ -95,9 +95,11 @@
 (check-sat) ; unsat
 (pop)
 ; conclusion of induction
-; 色々飛ばしてしまっている。この辺りのギャップもちゃんと埋めておくべきだろうなぁ。
-; state-inv is not reused since we want to use (m i k) as a trigger.
-; (is-nat should should not be used as a trigger as it is interpreted)
+; 
+; Note:
+; - Is justification of the induction scheme necessary?
+; - state-inv is not reused since we want to use (m i k) as a trigger.
+; - is-nat should not be used as a trigger since it is interpreted function.
 (assert
   (forall ((i Int) (k Int))
     (=> (and (is-child i) (is-nat k)) (is-even-nat (m i k)))
@@ -178,6 +180,9 @@
 (check-sat) ; unsat
 (pop)
 ; conclusion of induction
+;
+; Note:
+; - Is justification of the induction scheme necessary?
 (assert (forall ((j Int)) (=> (is-child j)  (P j)) :pat { (m j k) } ))
 
 (check-sat) ; unsat
