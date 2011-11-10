@@ -79,15 +79,25 @@
     (=> (is-child i) (is-even-nat (m i k)))
     :pat { (m i k) } ))
 ; Lemma. Preservation of state invariant
+; base case: state-inv(0)
 (push)
-(declare-fun k () Int)
-(assert (state-inv k))
-(declare-fun i () Int)
-(assert (is-child i))
-(assert (trans i k))
-(assert (not (is-even-nat (m i k)))) ; negation of the goal
+(assert (not (state-inv 0))) ; negation of the goal
 (check-sat) ; unsat
 (pop)
+; inductive step: state-inv(k) -> state-inv(k+1)
+(push)
+(declare-fun k1 () Int)
+(define-fun k () Int (- k1 1))
+(assert (is-nat k))
+(assert (forall ((i Int)) (=> (is-child i) (trans i k)) :pat { (m i k1) } ))
+(assert (state-inv k))
+(assert (not (state-inv k1))) ; negation of the goal
+(check-sat) ; unsat
+(pop)
+; conclusion of induction
+; 色々飛ばしてしまっている。この辺りのギャップもちゃんと埋めておくべきだろうなぁ。
+; state-inv is not reused since we want to use (m i k) as a trigger.
+; (is-nat should should not be used as a trigger as it is interpreted)
 (assert
   (forall ((i Int) (k Int))
     (=> (and (is-child i) (is-nat k)) (is-even-nat (m i k)))
@@ -97,17 +107,17 @@
 
 (declare-fun k () Int)
 (assert (is-nat k))
+(assert (forall ((j Int)) (=> (is-child j) (trans j k)) :pat { (m j (+ k 1)) } )) ; Is it a fragile trigger?
+; (check-sat) ; sat
 
 ; (1) max(k+1) <= max(k)
 (push)
-(assert (trans (max-child (+ k 1)) k))
 (assert (not (<= (max (+ k 1)) (max k)))) ; negation of the goal
 (check-sat) ; unsat
 (pop)
 
 ; (2) min(k) <= min(k+1)
 (push)
-(assert (trans (min-child (+ k 1)) k))
 (assert (not (<= (min k) (min (+ k 1))))) ; negation of the goal
 (check-sat) ; unsat
 (pop)
@@ -116,7 +126,6 @@
 (push)
 (declare-fun i () Int)
 (assert (is-child i))
-(assert (trans i k))
 (assert (< (min k) (m i k)))
 (assert (not (< (min k) (m i (+ k 1))))) ; negation of the goal
 (check-sat) ; unsat
@@ -126,7 +135,6 @@
 (push)
 (declare-fun i () Int)
 (assert (is-child i))
-(assert (trans i k))
 (assert (< (m i k) (m (right i) k)))
 (assert (not (< (m i k) (m i (+ k 1))))) ; negation of the goal
 (check-sat) ; unsat
@@ -150,7 +158,6 @@
 (declare-fun i () Int)
 (assert (is-child i))
 (assert (< (min k) (m i k)))
-(assert (forall ((j Int)) (trans j k) :pat { (m j k) } ))
 (assert
   (forall ((j Int))
     (=> (= (min k) (m j k)) (= (min k) (m j (+ k 1))))
@@ -159,7 +166,7 @@
 (define-fun P ((j Int)) Bool (= (min k) (m j k)))
 ; base case: P(min-child(k))
 (push)
-(assert (not (P (min-child k))))
+(assert (not (P (min-child k)))) ; negation of the goal
 (check-sat) ; unsat
 (pop)
 ; inductive step: P(j) -> P(right(j))
@@ -167,8 +174,7 @@
 (declare-fun j () Int)
 (assert (is-child j))
 (assert (P j))
-(assert (trans j k))
-(assert (not (P (right j))))
+(assert (not (P (right j)))) ; negation of the goal
 (check-sat) ; unsat
 (pop)
 ; conclusion of induction

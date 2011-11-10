@@ -1,2 +1,2 @@
-Attempt of proving "Uniform Candy Distribution" problem by Z3 SMT-solver.
+Attempt of proving "Uniform Candy Distribution" problem with Z3 SMT-solver.
 See <http://staff.aist.go.jp/reynald.affeldt/tpp2011/ucd.html> for detail.
