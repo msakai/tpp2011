@@ -1,9 +1,9 @@
 ; z3 /smtc ucd.smtc
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 (set-option :produce-models true)
 ;(set-option :produce-assignments true)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (declare-fun N () Int)
 (assert (> N 0))
