@@ -46,7 +46,7 @@
 ; initial state
 (assert
   (forall ((i Int) (k Int))
-    (=> (and (is-child i) (= k 0)) (is-even-nat (m i k)))
+    (=> (is-child i) (= k 0) (is-even-nat (m i k)))
     :pat { (m i k) } ))
 
 ; transition relation
@@ -67,7 +67,7 @@
 ;           (ite (is-even-nat tmp) tmp (+ tmp 1)))))
 ; (assert 
 ;   (forall ((i Int) (k Int))
-;     (=> (and (is-child i) (is-nat k)) (trans1 i k))
+;     (=> (is-child i) (is-nat k) (trans1 i k))
 ; ;    (trans1 i k)
 ;     :pat { (m i k) } ))
 
@@ -102,7 +102,7 @@
 ; - is-nat should not be used as a trigger since it is interpreted function.
 (assert
   (forall ((i Int) (k Int))
-    (=> (and (is-child i) (is-nat k)) (is-even-nat (m i k)))
+    (=> (is-child i) (is-nat k) (is-even-nat (m i k)))
     :pat { (m i k) } ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
