@@ -43,6 +43,18 @@
 ; Def. right(i) = (if (i < N) then (i+1) else 1).
 (define-fun right ((i Int)) Int (ite (< i N) (+ i 1) 1))
 
+; Def. num(n,k) is the number of children holding m candies after k steps.
+; Note that the axiomatization is partial.
+(declare-fun num (Int Int) Int)
+(assert (forall ((n Int) (k Int)) (is-nat (num n k)) :pat { (num n k) }))
+(assert
+  (forall ((n Int) (k Int))
+    (=>
+      (exists ((i Int)) (and (is-child i) (= (m i k) n) (not (= (m i (+ k 1)) n))))
+      (forall ((i Int)) (=> (is-child i) (not (= (m i k) n)) (not (= (m i (+ k 1)) n))))
+      (< (num n (+ k 1)) (num n k)))
+    :pat { (num n k) } ))
+
 ; initial state
 (assert
   (forall ((i Int) (k Int))
@@ -142,51 +154,56 @@
 (check-sat) ; unsat
 (pop)
 
-;  (5) if (min(k) < m(i,k)) for some i,
-;      then num(min(k),k+1) < num(min(k),k),
-
-; for each j
-;   if min(k) < m(j,k) then min(k) < m(j,k+1) by (3)
-;   if min(k) = m(j,k)
-;     if min(k) = m(j,k) < m(right(j),k) then min(k) < m(j,k+1) by (4)
-;     if not (m(j,k) < m(right(j),k)) then
-;       min(k) = m(j,k) = m(right(j),k)
-; すべて最後のケースの場合に個数は変わらないが、
-; それは (min(k) < m(i,k)) という前提に矛盾する。
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; if (min(k) < m(i,k)) for some i, then min(k)=m(j,k)<m(j,k+1) for some j.
+; (5) if (min(k) < m(i,k)) for some i,
+;     then num(min(k),k+1) < num(min(k),k),
 (push)
-(declare-fun i () Int)
-(assert (is-child i))
-(assert (< (min k) (m i k)))
-(assert
-  (forall ((j Int))
-    (=> (is-child j) (= (min k) (m j k)) (not (< (min k) (m j (+ k 1)))))
-    :pat { (m j k) } )) ; negation of the goal
+  ; Suppose (min(k) < m(i,k)) for some i.
+  (declare-fun i () Int)
+  (assert (is-child i))
+  (assert (< (min k) (m i k)))
+  
+  ; Show m(j,k)=min(k) and min(k)<(j,k+1) for some j.
+  (push)
+    (assert
+      (forall ((j Int))
+        (=> (is-child j) (= (min k) (m j k)) (not (< (min k) (m j (+ k 1)))))
+        :pat { (m j k) } )) ; negation of the goal
+    
+    (define-fun P ((j Int)) Bool (= (min k) (m j k)))
+    ; base case: P(min-child(k))
+    (push)
+      (assert (not (P (min-child k)))) ; negation of the goal
+      (check-sat) ; unsat
+    (pop)
+    ; induction step: P(j) -> P(right(j))
+    (push)
+      (declare-fun j () Int)
+      (assert (is-child j))
+      (assert (P j))
+      (assert (not (P (right j)))) ; negation of the goal
+      (check-sat) ; unsat
+    (pop)
+    ; conclusion of induction
+    ;
+    ; Note:
+    ; - Is justification of the induction scheme necessary?
+    (assert (forall ((j Int)) (=> (is-child j)  (P j)) :pat { (m j k) } ))
 
-(define-fun P ((j Int)) Bool (= (min k) (m j k)))
-; base case: P(min-child(k))
-(push)
-(assert (not (P (min-child k)))) ; negation of the goal
-(check-sat) ; unsat
-(pop)
-; induction step: P(j) -> P(right(j))
-(push)
-(declare-fun j () Int)
-(assert (is-child j))
-(assert (P j))
-(assert (not (P (right j)))) ; negation of the goal
-(check-sat) ; unsat
-(pop)
-; conclusion of induction
-;
-; Note:
-; - Is justification of the induction scheme necessary?
-(assert (forall ((j Int)) (=> (is-child j)  (P j)) :pat { (m j k) } ))
+    (check-sat) ; unsat
+  (pop)
+  (assert
+    (exists ((j Int))
+      (and (is-child j)
+           (= (min k) (m j k))
+           (< (min k) (m j (+ k 1))))))
 
-(check-sat) ; unsat
+  ; Show num(min(k), k+1) < num(min(k), k)
+  (push)
+    (assert (not (< (num (min k) (+ k 1)) (num (min k) k))))
+    (check-sat) ; unsat
+  (pop)
 (pop)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; Proof outline:
