@@ -84,7 +84,7 @@
 (assert (not (state-inv 0))) ; negation of the goal
 (check-sat) ; unsat
 (pop)
-; inductive step: state-inv(k) -> state-inv(k+1)
+; induction step: state-inv(k) -> state-inv(k+1)
 (push)
 (declare-fun k1 () Int)
 (define-fun k () Int (- k1 1))
@@ -162,7 +162,7 @@
 (assert (< (min k) (m i k)))
 (assert
   (forall ((j Int))
-    (=> (= (min k) (m j k)) (= (min k) (m j (+ k 1))))
+    (=> (is-child j) (= (min k) (m j k)) (not (< (min k) (m j (+ k 1)))))
     :pat { (m j k) } )) ; negation of the goal
 
 (define-fun P ((j Int)) Bool (= (min k) (m j k)))
@@ -171,7 +171,7 @@
 (assert (not (P (min-child k)))) ; negation of the goal
 (check-sat) ; unsat
 (pop)
-; inductive step: P(j) -> P(right(j))
+; induction step: P(j) -> P(right(j))
 (push)
 (declare-fun j () Int)
 (assert (is-child j))
