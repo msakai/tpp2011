@@ -93,18 +93,18 @@
 ; Lemma. Preservation of state invariant
 ; base case: state-inv(0)
 (push)
-(assert (not (state-inv 0))) ; negation of the goal
-(check-sat) ; unsat
+  (assert (not (state-inv 0))) ; negation of the goal
+  (check-sat) ; unsat
 (pop)
-; induction step: state-inv(k) -> state-inv(k+1)
+; induction step: state-inv(k) → state-inv(k+1)
 (push)
-(declare-fun k1 () Int)
-(define-fun k () Int (- k1 1))
-(assert (is-nat k))
-(assert (forall ((i Int)) (=> (is-child i) (trans i k)) :pat { (m i k1) } ))
-(assert (state-inv k))
-(assert (not (state-inv k1))) ; negation of the goal
-(check-sat) ; unsat
+  (declare-fun k1 () Int)
+  (define-fun k () Int (- k1 1))
+  (assert (is-nat k))
+  (assert (forall ((i Int)) (=> (is-child i) (trans i k)) :pat { (m i k1) } ))
+  (assert (state-inv k))
+  (assert (not (state-inv k1))) ; negation of the goal
+  (check-sat) ; unsat
 (pop)
 ; conclusion of induction
 ; 
@@ -122,36 +122,35 @@
 (declare-fun k () Int)
 (assert (is-nat k))
 (assert (forall ((j Int)) (=> (is-child j) (trans j k)) :pat { (m j (+ k 1)) } )) ; Is it a fragile trigger?
-; (check-sat) ; sat
 
 ; (1) max(k+1) <= max(k)
 (push)
-(assert (not (<= (max (+ k 1)) (max k)))) ; negation of the goal
-(check-sat) ; unsat
+  (assert (not (<= (max (+ k 1)) (max k)))) ; negation of the goal
+  (check-sat) ; unsat
 (pop)
 
 ; (2) min(k) <= min(k+1)
 (push)
-(assert (not (<= (min k) (min (+ k 1))))) ; negation of the goal
-(check-sat) ; unsat
+  (assert (not (<= (min k) (min (+ k 1))))) ; negation of the goal
+  (check-sat) ; unsat
 (pop)
 
 ; (3) if min(k) < m(i,k) then min(k) < m(i,k+1)
 (push)
-(declare-fun i () Int)
-(assert (is-child i))
-(assert (< (min k) (m i k)))
-(assert (not (< (min k) (m i (+ k 1))))) ; negation of the goal
-(check-sat) ; unsat
+  (declare-fun i () Int)
+  (assert (is-child i))
+  (assert (< (min k) (m i k)))
+  (assert (not (< (min k) (m i (+ k 1))))) ; negation of the goal
+  (check-sat) ; unsat
 (pop)
 
 ; (4) if m(i,k) < m(right(i),k) then m(i,k) < m(i,k+1)
 (push)
-(declare-fun i () Int)
-(assert (is-child i))
-(assert (< (m i k) (m (right i) k)))
-(assert (not (< (m i k) (m i (+ k 1))))) ; negation of the goal
-(check-sat) ; unsat
+  (declare-fun i () Int)
+  (assert (is-child i))
+  (assert (< (m i k) (m (right i) k)))
+  (assert (not (< (m i k) (m i (+ k 1))))) ; negation of the goal
+  (check-sat) ; unsat
 (pop)
 
 ; (5) if (min(k) < m(i,k)) for some i,
@@ -175,7 +174,7 @@
       (assert (not (P (min-child k)))) ; negation of the goal
       (check-sat) ; unsat
     (pop)
-    ; induction step: P(j) -> P(right(j))
+    ; induction step: P(j) → P(right(j))
     (push)
       (declare-fun j () Int)
       (assert (is-child j))
@@ -197,20 +196,24 @@
            (= (min k) (m j k))
            (< (min k) (m j (+ k 1))))))
 
-  ; Show num(min(k), k+1) < num(min(k), k)
+  ; (num(min(k), k+1) < num(min(k), k)) holds.
   (push)
     (assert (not (< (num (min k) (+ k 1)) (num (min k) k))))
     (check-sat) ; unsat
   (pop)
 
-  ; Show that pair of loop-variant-1 and loop-variant-2 decrease
-  ; in lexicographical ordering.
+  ; loop variant
   (define-fun loop-variant-1 ((k Int)) Int (- (max k) (min k)))
   (define-fun loop-variant-2 ((k Int)) Int (num (min k) k))
+
+  ; lexicographical ordering
+  (define-fun lt ((a1 Int) (a2 Int) (b1 Int) (b2 Int)) Bool
+    (or (< a1 b1) (and (= a1 b1) (< a2 b2))))
+
+  ; Show that loop variant decrease in lexicographical ordering.
   (define-fun decreasing () Bool
-    (or (< (loop-variant-1 (+ k 1)) (loop-variant-1 k))
-        (and (= (loop-variant-1 (+ k 1)) (loop-variant-1 k))
-             (< (loop-variant-2 (+ k 1)) (loop-variant-2 k)))))
+    (lt (loop-variant-1 (+ k 1)) (loop-variant-2 (+ k 1))
+        (loop-variant-1 k) (loop-variant-2 k)))
   (push)
     (assert (not decreasing))
     (check-sat) ; unsat
