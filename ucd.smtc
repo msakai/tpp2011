@@ -202,6 +202,19 @@
     (assert (not (< (num (min k) (+ k 1)) (num (min k) k))))
     (check-sat) ; unsat
   (pop)
+
+  ; Show that pair of loop-variant-1 and loop-variant-2 decrease
+  ; in lexicographical ordering.
+  (define-fun loop-variant-1 ((k Int)) Int (- (max k) (min k)))
+  (define-fun loop-variant-2 ((k Int)) Int (num (min k) k))
+  (define-fun decreasing () Bool
+    (or (< (loop-variant-1 (+ k 1)) (loop-variant-1 k))
+        (and (= (loop-variant-1 (+ k 1)) (loop-variant-1 k))
+             (< (loop-variant-2 (+ k 1)) (loop-variant-2 k)))))
+  (push)
+    (assert (not decreasing))
+    (check-sat) ; unsat
+  (pop)
 (pop)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
