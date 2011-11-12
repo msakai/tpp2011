@@ -102,7 +102,7 @@
   (define-fun k () Int (- k1 1))
   (assert (is-nat k))
   (assert (forall ((i Int)) (=> (is-child i) (trans i k)) :pat { (m i k1) } ))
-  (assert (state-inv k))
+  (assert (state-inv k)) ; induction hypothesis
   (assert (not (state-inv k1))) ; negation of the goal
   (check-sat) ; unsat
 (pop)
@@ -195,7 +195,7 @@
       (push)
         (declare-fun j () Int)
         (assert (is-child j))
-        (assert (P j))
+        (assert (P j)) ; induction hypothesis
         (assert (not (P (right j)))) ; negation of the goal
         (check-sat) ; unsat
       (pop)
