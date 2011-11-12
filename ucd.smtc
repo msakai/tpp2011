@@ -227,7 +227,13 @@
   (pop)
 
 (pop)
-(assert (forall ((k Int)) (=> (is-nat k) (loop-variant-decrease k))))
+
+(assert
+  (forall ((k Int))
+    (=> (is-nat k)
+        (exists ((i Int)) (< (min k) (m i k)) :pat { (m i k) })
+        (loop-variant-decrease k))
+    :pat { (min k) } ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
