@@ -119,106 +119,115 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(declare-fun k () Int)
-(assert (is-nat k))
-(assert (forall ((j Int)) (=> (is-child j) (trans j k)) :pat { (m j (+ k 1)) } )) ; Is it a fragile trigger?
+; loop variant
+(define-fun loop-variant-1 ((k Int)) Int (- (max k) (min k)))
+(define-fun loop-variant-2 ((k Int)) Int (num (min k) k))
 
-; (1) max(k+1) <= max(k)
-(push)
-  (assert (not (<= (max (+ k 1)) (max k)))) ; negation of the goal
-  (check-sat) ; unsat
-(pop)
+; lexicographical ordering
+(define-fun lt ((a1 Int) (a2 Int) (b1 Int) (b2 Int)) Bool
+  (and (is-nat a1) (is-nat a2)
+       (or (< a1 b1)
+	   (and (= a1 b1) (< a2 b2)))))
 
-; (2) min(k) <= min(k+1)
-(push)
-  (assert (not (<= (min k) (min (+ k 1))))) ; negation of the goal
-  (check-sat) ; unsat
-(pop)
+(define-fun loop-variant-decrease ((k Int)) Bool
+  (lt (loop-variant-1 (+ k 1)) (loop-variant-2 (+ k 1))
+      (loop-variant-1 k) (loop-variant-2 k)))
 
-; (3) if min(k) < m(i,k) then min(k) < m(i,k+1)
-(push)
-  (declare-fun i () Int)
-  (assert (is-child i))
-  (assert (< (min k) (m i k)))
-  (assert (not (< (min k) (m i (+ k 1))))) ; negation of the goal
-  (check-sat) ; unsat
-(pop)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; (4) if m(i,k) < m(right(i),k) then m(i,k) < m(i,k+1)
 (push)
-  (declare-fun i () Int)
-  (assert (is-child i))
-  (assert (< (m i k) (m (right i) k)))
-  (assert (not (< (m i k) (m i (+ k 1))))) ; negation of the goal
-  (check-sat) ; unsat
-(pop)
+  (declare-fun k () Int)
+  (assert (is-nat k))
+  (assert (forall ((j Int)) (=> (is-child j) (trans j k)) :pat { (m j (+ k 1)) } )) ; Is it a fragile trigger?
 
-; (5) if (min(k) < m(i,k)) for some i,
-;     then num(min(k),k+1) < num(min(k),k),
-(push)
-  ; Suppose (min(k) < m(i,k)) for some i.
-  (declare-fun i () Int)
-  (assert (is-child i))
-  (assert (< (min k) (m i k)))
-  
-  ; Show m(j,k)=min(k) and min(k)<(j,k+1) for some j.
+  ; (1) max(k+1) <= max(k)
   (push)
+    (assert (not (<= (max (+ k 1)) (max k)))) ; negation of the goal
+    (check-sat) ; unsat
+  (pop)
+
+  ; (2) min(k) <= min(k+1)
+  (push)
+    (assert (not (<= (min k) (min (+ k 1))))) ; negation of the goal
+    (check-sat) ; unsat
+  (pop)
+
+  ; (3) if min(k) < m(i,k) then min(k) < m(i,k+1)
+  (push)
+    (declare-fun i () Int)
+    (assert (is-child i))
+    (assert (< (min k) (m i k)))
+    (assert (not (< (min k) (m i (+ k 1))))) ; negation of the goal
+    (check-sat) ; unsat
+  (pop)
+
+  ; (4) if m(i,k) < m(right(i),k) then m(i,k) < m(i,k+1)
+  (push)
+    (declare-fun i () Int)
+    (assert (is-child i))
+    (assert (< (m i k) (m (right i) k)))
+    (assert (not (< (m i k) (m i (+ k 1))))) ; negation of the goal
+    (check-sat) ; unsat
+  (pop)
+
+  ; (5) if (min(k) < m(i,k)) for some i,
+  ;     then num(min(k),k+1) < num(min(k),k),
+  (push)
+    ; Suppose (min(k) < m(i,k)) for some i.
+    (declare-fun i () Int)
+    (assert (is-child i))
+    (assert (< (min k) (m i k)))
+
+    ; Show m(j,k)=min(k) and min(k)<(j,k+1) for some j.
+    (push)
+      (assert
+        (forall ((j Int))
+          (=> (is-child j) (= (min k) (m j k)) (not (< (min k) (m j (+ k 1)))))
+          :pat { (m j k) } )) ; negation of the goal
+
+      (define-fun P ((j Int)) Bool (= (min k) (m j k)))
+      ; base case: P(min-child(k))
+      (push)
+        (assert (not (P (min-child k)))) ; negation of the goal
+        (check-sat) ; unsat
+      (pop)
+      ; induction step: P(j) → P(right(j))
+      (push)
+        (declare-fun j () Int)
+        (assert (is-child j))
+        (assert (P j))
+        (assert (not (P (right j)))) ; negation of the goal
+        (check-sat) ; unsat
+      (pop)
+      ; conclusion of induction
+      ;
+      ; Note:
+      ; - Is justification of the induction scheme necessary?
+      (assert (forall ((j Int)) (=> (is-child j)  (P j)) :pat { (m j k) } ))
+
+      (check-sat) ; unsat
+    (pop)
     (assert
-      (forall ((j Int))
-        (=> (is-child j) (= (min k) (m j k)) (not (< (min k) (m j (+ k 1)))))
-        :pat { (m j k) } )) ; negation of the goal
-    
-    (define-fun P ((j Int)) Bool (= (min k) (m j k)))
-    ; base case: P(min-child(k))
+      (exists ((j Int))
+        (and (is-child j)
+             (= (min k) (m j k))
+             (< (min k) (m j (+ k 1))))))
+
+    ; (num(min(k), k+1) < num(min(k), k)) holds.
     (push)
-      (assert (not (P (min-child k)))) ; negation of the goal
+      (assert (not (< (num (min k) (+ k 1)) (num (min k) k)))) ; negation of the goal
       (check-sat) ; unsat
     (pop)
-    ; induction step: P(j) → P(right(j))
+
+    ; Show that loop variant decrease in lexicographical ordering.
     (push)
-      (declare-fun j () Int)
-      (assert (is-child j))
-      (assert (P j))
-      (assert (not (P (right j)))) ; negation of the goal
+      (assert (not (loop-variant-decrease k))) ; negation of the goal
       (check-sat) ; unsat
     (pop)
-    ; conclusion of induction
-    ;
-    ; Note:
-    ; - Is justification of the induction scheme necessary?
-    (assert (forall ((j Int)) (=> (is-child j)  (P j)) :pat { (m j k) } ))
-
-    (check-sat) ; unsat
-  (pop)
-  (assert
-    (exists ((j Int))
-      (and (is-child j)
-           (= (min k) (m j k))
-           (< (min k) (m j (+ k 1))))))
-
-  ; (num(min(k), k+1) < num(min(k), k)) holds.
-  (push)
-    (assert (not (< (num (min k) (+ k 1)) (num (min k) k))))
-    (check-sat) ; unsat
   (pop)
 
-  ; loop variant
-  (define-fun loop-variant-1 ((k Int)) Int (- (max k) (min k)))
-  (define-fun loop-variant-2 ((k Int)) Int (num (min k) k))
-
-  ; lexicographical ordering
-  (define-fun lt ((a1 Int) (a2 Int) (b1 Int) (b2 Int)) Bool
-    (or (< a1 b1) (and (= a1 b1) (< a2 b2))))
-
-  ; Show that loop variant decrease in lexicographical ordering.
-  (define-fun decreasing () Bool
-    (lt (loop-variant-1 (+ k 1)) (loop-variant-2 (+ k 1))
-        (loop-variant-1 k) (loop-variant-2 k)))
-  (push)
-    (assert (not decreasing))
-    (check-sat) ; unsat
-  (pop)
 (pop)
+(assert (forall ((k Int)) (=> (is-nat k) (loop-variant-decrease k))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
