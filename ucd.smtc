@@ -124,10 +124,13 @@
 (define-fun loop-variant-2 ((k Int)) Int (num (min k) k))
 
 ; lexicographical ordering
-(define-fun lt ((a1 Int) (a2 Int) (b1 Int) (b2 Int)) Bool
-  (and (is-nat a1) (is-nat a2)
-       (or (< a1 b1)
-	   (and (= a1 b1) (< a2 b2)))))
+(declare-fun lt (Int Int Int Int) Bool)
+(assert
+  (forall ((a1 Int) (a2 Int) (b1 Int) (b2 Int))
+    (= (lt a1 a2 b1 b2)
+       (and (is-nat a1) (is-nat a2)
+            (or (< a1 b1)
+                (and (= a1 b1) (< a2 b2)))))))
 
 (define-fun loop-variant-decrease ((k Int)) Bool
   (lt (loop-variant-1 (+ k 1)) (loop-variant-2 (+ k 1))
@@ -234,6 +237,53 @@
         (exists ((i Int)) (< (min k) (m i k)) :pat { (m i k) })
         (loop-variant-decrease k))
     :pat { (min k) } ))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(declare-fun P (Int Int) Bool)
+(assert
+  (forall ((lv1 Int) (lv2 Int))
+    (= (P lv1 lv2)
+       (forall ((k Int))
+         (=> (is-nat k)
+             (= lv1 (loop-variant-1 k))
+             (= lv2 (loop-variant-2 k))
+             (exists ((k1 Int))
+               (and (is-nat k1) (= (min k1) (max k1)))
+               :pat { (min k1) }))
+         :pat { (min k) }))
+    :pat { (P lv1 lv2) }))
+
+; Prove (∀v1,v2. P(v1,v2)) using well-founded induction on lt.
+(push)
+  (declare-fun v1 () Int)
+  (declare-fun v2 () Int)
+  (assert (is-nat v1))
+  (assert (is-nat v2))
+
+  ; induction hypothesis
+  (assert 
+    (forall ((u1 Int) (u2 Int))
+      (=> (lt u1 u2 v1 v2) (P u1 u2))
+      :pat { (lt u1 u2 v1 v2) }))
+
+  ; negation of the goal
+  (assert (not (P v1 v2)))
+
+  (check-sat)
+(pop)
+(assert (forall ((v1 Int) (v2 Int)) (P v1 v2)))
+
+(push)
+  (assert (not (P (loop-variant-1 0) (loop-variant-2 0))))
+  (check-sat)
+(pop)
+(assert (P (loop-variant-1 0) (loop-variant-2 0)))
+
+(push)
+  (assert (not (exists ((k1 Int)) (and (is-nat k1) (= (min k1) (max k1))))))
+  (check-sat)
+(pop)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
