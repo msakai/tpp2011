@@ -9,7 +9,8 @@
 (assert (> N 0))
 
 (define-fun is-nat ((n Int)) Bool (>= n 0))
-(define-fun is-even-nat ((n Int)) Bool (and (is-nat n) (= (mod n 2) 0)))
+(define-fun is-even ((n Int)) Bool (= (mod n 2) 0))
+(define-fun is-even-nat ((n Int)) Bool (and (is-nat n) (is-even n)))
 (define-fun is-child ((i Int)) Bool (and (<= 1 i) (<= i N)))
 
 ; Let m(i,k) be the number of candies held by the i'th child (i in {1,...,N})
@@ -65,7 +66,7 @@
 (define-fun trans ((i Int) (k Int)) Bool
   (let ((tmp (+ (div (m i k) 2) (div (m (right i) k) 2))))
        (= (m i (+ k 1))
-          (ite (is-even-nat tmp) tmp (+ tmp 1)))))
+          (ite (is-even tmp) tmp (+ tmp 1)))))
 
 ; ; to avoid trigger loop
 ; (declare-fun m1 (Int Int) Int)
