@@ -1,8 +1,82 @@
-; z3 /smtc ucd.smtc
-
-(set-option :produce-models true)
-;(set-option :produce-assignments true)
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 
+; Proving "Uniform Candy Distribution" problem with Z3 SMT-solver
+; written by Masahiro Sakai
+;
+; Usage:
+; 
+;   > z3 /smtc ucd.smtc
+;
+;   を実行し、出力がsuccessとunsatと警告のみで、satがないことを確認する。
+; 
+; 簡単な説明:
+;
+;   Z3[1,2]等のSMTソルバ[3]は非解釈関数や整数・有理数に関する線形不等式等
+;   からなる論理式の解を求めるためのソルバだが、解が存在しないことを確認す
+;   ることにより、定理証明にも使うことができる。Pを証明したければ、¬Pに解
+;   が存在しないことを示せば良い。これをここでは以下のようにすることで実現
+;   している。
+;
+;     (push)
+;       (assert (not P))
+;       (check-sat) ; unsat
+;     (pop)
+;
+;   (push) によりコンテキストを保存し、(assert (not P)) によって一時的に
+;   ¬Pを制約に追加し、(check-sat) によって制約を満たす解を探索させている。
+;   探索の結果、unsatすなわち解が存在せず制約を充足出来ないことが示される。
+;   解が存在しないのは制約が矛盾しているためであり、背理法により P が真で
+;   あることが確認できる。その後、(pop)によりコンテキストを復元し、一時的
+;   に追加した制約(not P)を取り除いている。
+;
+;   この手法による定理証明は完全ではないが健全である。具体的には全称量化子
+;   を含む場合等には、充足不可能な制約条件であっても、常に充足不可能と判定
+;   して終了できるとは限らない。しかし、充足不可能と判定された場合にはそれ
+;   は常に正しい判定になっている。
+;
+;   今、Pが真である(他の制約から含意される)ことが示せたため、Pを制約条件と
+;   して追加しても論理的には同値である。しかし、上記手法による定理証明は
+;   健全ではあるが完全ではないため、Pを明示的に制約条件として追加しないと
+;   後の命題が証明できない場合もあり、そのような場合には、(assert P) によっ
+;   て明示的にPを制約条件に追加している。
+; 
+;   上記手法による定理証明が不完全な点の一つは、帰納法を必要とするような命
+;   題を証明できないことである。そこで、∀n. P(n) を数学的帰納法によって証
+;   明する場合には、P(0) および ∀n. P(n) → P(n+1) をそれぞれ上記方法によっ
+;   て証明し、その後 ∀n. P(n) を assert によって明示的に制約に追加すると
+;   いうことを行っている。また、自然数の組の上の辞書式順序による整礎帰納法
+;   についても同様にして用いている。
+;
+;   なお、SMTソルバにて全称量化子や帰納法を取り扱う手法の詳細については、
+;   [4,5,6]等を参照されたい。
+;
+; 参考文献:
+;
+; [1] Z3: An Efficient Theorem Prover
+;     http://research.microsoft.com/en-us/um/redmond/projects/z3/
+;
+; [2] Leonardo de Moura, Nikolaj Bjørne. Z3 - a Tutorial.
+;     http://research.microsoft.com/en-us/um/redmond/projects/z3/tutorial.pdf 
+; 
+; [3] Roberto Sebastiani. Lazy Satisfiability Modulo Theories.
+;     Journal on Satisfiability, Boolean Modeling and Computation, Vol.3
+;     (2007), pp. 141-224.
+;
+; [4] K. Rustan M. Leino, Rosemary Monahan.
+;     Reasoning about comprehensions with first-order SMT solvers.
+;     In SAC '09: Proceedings of the 2009 ACM symposium on Applied Computing
+;     (2009), pp. 615-622.
+;     http://research.microsoft.com/en-us/um/people/leino/papers/rmkrml183.pdf
+;
+; [5] Michał Moska. Programming with Triggers.
+;     In Proceedings of the 7th International Workshop on Satisfiability
+;     Modulo Theories (2009), pp. 20-29.
+;     http://research.microsoft.com/en-us/um/people/moskal/pdf/prtrig.pdf
+; 
+; [6] K. Rustan M. Leino. Automating Induction with an SMT Solver.
+;     To appear at VMCAI 2012.
+;     http://research.microsoft.com/en-us/um/people/leino/papers/krml218.pdf
+; 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (declare-fun N () Int)
@@ -45,7 +119,7 @@
 (define-fun right ((i Int)) Int (ite (< i N) (+ i 1) 1))
 
 ; Def. num(n,k) is the number of children holding m candies after k steps.
-; Note that the axiomatization is partial.
+; Note that the axiomatization is partial/incomplete.
 (declare-fun num (Int Int) Int)
 (assert (forall ((n Int) (k Int)) (is-nat (num n k)) :pat { (num n k) }))
 (assert
@@ -110,7 +184,6 @@
 ; conclusion of induction
 ; 
 ; Note:
-; - Is justification of the induction scheme necessary?
 ; - state-inv is not reused since we want to use (m i k) as a trigger.
 ; - is-nat should not be used as a trigger since it is interpreted function.
 (assert
@@ -271,19 +344,19 @@
   ; negation of the goal
   (assert (not (P v1 v2)))
 
-  (check-sat)
+  (check-sat) ; unsat
 (pop)
 (assert (forall ((v1 Int) (v2 Int)) (P v1 v2)))
 
 (push)
   (assert (not (P (loop-variant-1 0) (loop-variant-2 0))))
-  (check-sat)
+  (check-sat) ; unsat
 (pop)
 (assert (P (loop-variant-1 0) (loop-variant-2 0)))
 
 (push)
   (assert (not (exists ((k1 Int)) (and (is-nat k1) (= (min k1) (max k1))))))
-  (check-sat)
+  (check-sat) ; unsat
 (pop)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
