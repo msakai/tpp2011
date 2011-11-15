@@ -5,9 +5,9 @@
 ;
 ; Usage:
 ; 
-;   > z3 /smtc ucd.smtc
+;   > z3 ucd.smtc
 ;
-;   を実行し、出力がsuccessとunsatと警告のみで、satがないことを確認する。
+;   を実行し、出力がunsatと警告のみで、satがないことを確認する。
 ; 
 ; 簡単な説明:
 ;
@@ -82,6 +82,8 @@
 ;     http://research.microsoft.com/en-us/um/people/leino/papers/krml218.pdf
 ; 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(set-option :print-success false)
 
 (declare-fun N () Int)
 (assert (> N 0))
