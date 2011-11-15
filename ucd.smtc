@@ -50,7 +50,11 @@
 ;   なお、SMTソルバにて全称量化子や帰納法を取り扱う手法の詳細については、
 ;   [4,5,6]等を参照されたい。
 ;
-; 参考文献:
+; Latest version:
+;
+;   Latest version will be available at https://github.com/msakai/tpp2011
+; 
+; Bibliography:
 ;
 ; [1] Z3: An Efficient Theorem Prover
 ;     http://research.microsoft.com/en-us/um/redmond/projects/z3/
@@ -141,22 +145,12 @@
   (let ((tmp (+ (div (m i k) 2) (div (m (right i) k) 2))))
        (= (m i (+ k 1))
           (ite (is-even tmp) tmp (+ tmp 1)))))
-
-; ; to avoid trigger loop
-; (declare-fun m1 (Int Int) Int)
-; (assert
-;   (forall ((i Int) (k Int))
-;     (= (m i k) (m1 i k))
-;     :pat { (m i k) }))
-; (define-fun trans1 ((i Int) (k Int)) Bool
-;   (let ((tmp (+ (div (m1 i k) 2) (div (m1 (right i) k) 2))))
-;        (= (m1 i (+ k 1))
-;           (ite (is-even-nat tmp) tmp (+ tmp 1)))))
-; (assert 
-;   (forall ((i Int) (k Int))
-;     (=> (is-child i) (is-nat k) (trans1 i k))
-; ;    (trans1 i k)
-;     :pat { (m i k) } ))
+; To avoid trigger loop
+; 本来はここで制約を追加すべきだが、trigger loop を避けるために、個々のkに対して
+; 手動で指定する。
+;(assert 
+;  (forall ((i Int) (k Int))
+;    (=> (is-child i) (is-nat k) (trans i k))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -176,6 +170,7 @@
   (declare-fun k1 () Int)
   (define-fun k () Int (- k1 1))
   (assert (is-nat k))
+  ; 本来前もって追加しておくべきだが、前述の理由からここで追加
   (assert (forall ((i Int)) (=> (is-child i) (trans i k)) :pat { (m i k1) } ))
   (assert (state-inv k)) ; induction hypothesis
   (assert (not (state-inv k1))) ; negation of the goal
@@ -198,6 +193,7 @@
 (define-fun loop-variant-2 ((k Int)) Int (num (min k) k))
 
 ; lexicographical ordering
+; define-funで定義するのが自然だが、triggerにしたいのでdeclare-funで定義
 (declare-fun lt (Int Int Int Int) Bool)
 (assert
   (forall ((a1 Int) (a2 Int) (b1 Int) (b2 Int))
@@ -215,7 +211,9 @@
 (push)
   (declare-fun k () Int)
   (assert (is-nat k))
-  (assert (forall ((j Int)) (=> (is-child j) (trans j k)) :pat { (m j (+ k 1)) } )) ; Is it a fragile trigger?
+  ; 本来前もって追加しておくべきだが、前述の理由からここで追加
+  ; Is it a fragile trigger?
+  (assert (forall ((j Int)) (=> (is-child j) (trans j k)) :pat { (m j (+ k 1)) } ))
 
   ; (1) max(k+1) <= max(k)
   (push)
@@ -314,6 +312,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+; define-funで定義するのが自然だが、triggerにしたいのでdeclare-funで定義
 (declare-fun P (Int Int) Bool)
 (assert
   (forall ((lv1 Int) (lv2 Int))
@@ -358,6 +357,7 @@
   (assert (not (exists ((k1 Int)) (and (is-nat k1) (= (min k1) (max k1))))))
   (check-sat) ; unsat
 (pop)
+; QED
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
