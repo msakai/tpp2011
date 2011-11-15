@@ -167,9 +167,9 @@
 (pop)
 ; induction step: state-inv(k) → state-inv(k+1)
 (push)
+  (declare-fun k () Int)
   (declare-fun k1 () Int)
-  (define-fun k () Int (- k1 1))
-  (assert (is-nat k))
+  (assert (and (is-nat k) (= (+ k 1) k1)))
   ; 本来前もって追加しておくべきだが、前述の理由からここで追加
   (assert (forall ((i Int)) (=> (is-child i) (trans i k)) :pat { (m i k1) } ))
   (assert (state-inv k)) ; induction hypothesis
@@ -210,11 +210,12 @@
 
 ; Prove that loop variant decrease in lexicographical ordering.
 (push)
+  ; triggerに使いたいので、k,k1を共にdeclare-funで宣言
   (declare-fun k () Int)
-  (assert (is-nat k))
+  (declare-fun k1 () Int)
+  (assert (and (is-nat k) (= (+ k 1) k1)))
   ; 本来前もって追加しておくべきだが、前述の理由からここで追加
-  ; Is it a fragile trigger?
-  (assert (forall ((j Int)) (=> (is-child j) (trans j k)) :pat { (m j (+ k 1)) } ))
+  (assert (forall ((j Int)) (=> (is-child j) (trans j k)) :pat { (m j k1) } ))
 
   ; (1) max(k+1) <= max(k)
   (push)
