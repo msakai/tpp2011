@@ -208,6 +208,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+; Prove that loop variant decrease in lexicographical ordering.
 (push)
   (declare-fun k () Int)
   (assert (is-nat k))
@@ -274,10 +275,8 @@
         (assert (not (P (right j)))) ; negation of the goal
         (check-sat) ; unsat
       (pop)
-      ; conclusion of induction
-      ;
-      ; Note:
-      ; - Is justification of the induction scheme necessary?
+      ; conclusion of the induction
+      ; (P(j) → (∀l. P(l)→P(right(l))) → ∀l. P(l)) を仮定してしまっているのに注意。
       (assert (forall ((j Int)) (=> (is-child j)  (P j)) :pat { (m j k) } ))
 
       (check-sat) ; unsat
@@ -288,7 +287,7 @@
              (= (min k) (m j k))
              (< (min k) (m j (+ k 1))))))
 
-    ; (num(min(k), k+1) < num(min(k), k)) holds.
+    ; Show that (num(min(k), k+1) < num(min(k), k)) holds.
     (push)
       (assert (not (< (num (min k) (+ k 1)) (num (min k) k)))) ; negation of the goal
       (check-sat) ; unsat
