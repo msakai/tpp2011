@@ -5,7 +5,7 @@
 ;
 ; Usage:
 ; 
-;   > z3 ucd.smtc
+;   > z3 ucd.smt2
 ;
 ;   を実行し、出力がunsatと警告のみで、satがないことを確認する。
 ; 
@@ -99,27 +99,27 @@
 
 ; Def. max(k) = max{m(i,k) | i in {1,...,N}}
 (declare-fun max-child (Int) Int)
-(define-fun max ((k Int)) Int (m (max-child k) k))
+(define-fun max2 ((k Int)) Int (m (max-child k) k))
 (assert
   (forall ((k Int))
-    (is-child (max-child k))
-    :pat { (max-child k) } ))
+    (! (is-child (max-child k))
+       :pattern ((max-child k)))))
 (assert
   (forall ((k Int) (i Int))
-    (=> (is-child i) (>= (max k) (m i k)))
-    :pat { (m i k) } ))
+    (! (=> (is-child i) (>= (max2 k) (m i k)))
+       :pattern ((m i k)) )))
 
 ; Def. min(k) = min{m(i,k) | i in {1,...,N}}
 (declare-fun min-child (Int) Int)
-(define-fun min ((k Int)) Int (m (min-child k) k))
+(define-fun min2 ((k Int)) Int (m (min-child k) k))
 (assert
   (forall ((k Int))
-    (is-child (min-child k))
-    :pat { (min-child k) } ))
+    (! (is-child (min-child k))
+       :pattern ((min-child k)) )))
 (assert
   (forall ((k Int) (i Int))
-    (=> (is-child i) (<= (min k) (m i k)))
-    :pat { (m i k) } ))
+    (! (=> (is-child i) (<= (min2 k) (m i k)))
+       :pattern ((m i k)) )))
 
 ; Def. right(i) = (if (i < N) then (i+1) else 1).
 (define-fun right ((i Int)) Int (ite (< i N) (+ i 1) 1))
@@ -127,20 +127,23 @@
 ; Def. num(n,k) is the number of children holding m candies after k steps.
 ; Note that the axiomatization is partial/incomplete.
 (declare-fun num (Int Int) Int)
-(assert (forall ((n Int) (k Int)) (is-nat (num n k)) :pat { (num n k) }))
 (assert
   (forall ((n Int) (k Int))
-    (=>
-      (exists ((i Int)) (and (is-child i) (= (m i k) n) (not (= (m i (+ k 1)) n))))
-      (forall ((i Int)) (=> (is-child i) (not (= (m i k) n)) (not (= (m i (+ k 1)) n))))
-      (< (num n (+ k 1)) (num n k)))
-    :pat { (num n k) } ))
+    (! (is-nat (num n k))
+       :pattern ((num n k)))))
+(assert
+  (forall ((n Int) (k Int))
+    (! (=>
+         (exists ((i Int)) (and (is-child i) (= (m i k) n) (not (= (m i (+ k 1)) n))))
+         (forall ((i Int)) (=> (is-child i) (not (= (m i k) n)) (not (= (m i (+ k 1)) n))))
+         (< (num n (+ k 1)) (num n k)))
+       :pattern ((num n k)) )))
 
 ; initial state
 (assert
   (forall ((i Int) (k Int))
-    (=> (is-child i) (= k 0) (is-even-nat (m i k)))
-    :pat { (m i k) } ))
+    (! (=> (is-child i) (= k 0) (is-even-nat (m i k)))
+       :pattern ((m i k)) )))
 
 ; transition relation
 (define-fun trans ((i Int) (k Int)) Bool
@@ -159,8 +162,8 @@
 ; Def. state invariant
 (define-fun state-inv ((k Int)) Bool
   (forall ((i Int))
-    (=> (is-child i) (is-even-nat (m i k)))
-    :pat { (m i k) } ))
+    (! (=> (is-child i) (is-even-nat (m i k)))
+       :pattern ((m i k)) )))
 ; Lemma. Preservation of state invariant
 ; base case: state-inv(0)
 (push)
@@ -173,7 +176,7 @@
   (declare-fun k1 () Int)
   (assert (and (is-nat k) (= (+ k 1) k1)))
   ; 本来前もって追加しておくべきだが、前述の理由からここで追加
-  (assert (forall ((i Int)) (=> (is-child i) (trans i k)) :pat { (m i k1) } ))
+  (assert (forall ((i Int)) (! (=> (is-child i) (trans i k)) :pattern ((m i k1)) )))
   (assert (state-inv k)) ; induction hypothesis
   (assert (not (state-inv k1))) ; negation of the goal
   (check-sat) ; unsat
@@ -185,14 +188,14 @@
 ; - is-nat should not be used as a trigger since it is interpreted function.
 (assert
   (forall ((i Int) (k Int))
-    (=> (is-child i) (is-nat k) (is-even-nat (m i k)))
-    :pat { (m i k) } ))
+    (! (=> (is-child i) (is-nat k) (is-even-nat (m i k)))
+       :pattern ((m i k)) )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; loop variant
-(define-fun loop-variant-1 ((k Int)) Int (- (max k) (min k)))
-(define-fun loop-variant-2 ((k Int)) Int (num (min k) k))
+(define-fun loop-variant-1 ((k Int)) Int (- (max2 k) (min2 k)))
+(define-fun loop-variant-2 ((k Int)) Int (num (min2 k) k))
 
 ; lexicographical ordering
 ; define-funで定義するのが自然だが、triggerにしたいのでdeclare-funで定義
@@ -219,17 +222,17 @@
   (declare-fun k1 () Int)
   (assert (and (is-nat k) (= (+ k 1) k1)))
   ; 本来前もって追加しておくべきだが、前述の理由からここで追加
-  (assert (forall ((j Int)) (=> (is-child j) (trans j k)) :pat { (m j k1) } ))
+  (assert (forall ((j Int)) (! (=> (is-child j) (trans j k)) :pattern ((m j k1)) )))
 
   ; (1) max(k+1) <= max(k)
   (push)
-    (assert (not (<= (max (+ k 1)) (max k)))) ; negation of the goal
+    (assert (not (<= (max2 (+ k 1)) (max2 k)))) ; negation of the goal
     (check-sat) ; unsat
   (pop)
 
   ; (2) min(k) <= min(k+1)
   (push)
-    (assert (not (<= (min k) (min (+ k 1))))) ; negation of the goal
+    (assert (not (<= (min2 k) (min2 (+ k 1))))) ; negation of the goal
     (check-sat) ; unsat
   (pop)
 
@@ -237,8 +240,8 @@
   (push)
     (declare-fun i () Int)
     (assert (is-child i))
-    (assert (< (min k) (m i k)))
-    (assert (not (< (min k) (m i (+ k 1))))) ; negation of the goal
+    (assert (< (min2 k) (m i k)))
+    (assert (not (< (min2 k) (m i (+ k 1))))) ; negation of the goal
     (check-sat) ; unsat
   (pop)
 
@@ -257,16 +260,16 @@
     ; Suppose (min(k) < m(i,k)) for some i.
     (declare-fun i () Int)
     (assert (is-child i))
-    (assert (< (min k) (m i k)))
+    (assert (< (min2 k) (m i k)))
 
     ; Show m(j,k)=min(k) and min(k)<(j,k+1) for some j.
     (push)
       (assert
         (forall ((j Int))
-          (=> (is-child j) (= (min k) (m j k)) (not (< (min k) (m j (+ k 1)))))
-          :pat { (m j k) } )) ; negation of the goal
+          (! (=> (is-child j) (= (min2 k) (m j k)) (not (< (min2 k) (m j (+ k 1)))))
+             :pattern ((m j k)) ))) ; negation of the goal
 
-      (define-fun P ((j Int)) Bool (= (min k) (m j k)))
+      (define-fun P ((j Int)) Bool (= (min2 k) (m j k)))
       ; base case: P(min-child(k))
       (push)
         (assert (not (P (min-child k)))) ; negation of the goal
@@ -282,19 +285,19 @@
       (pop)
       ; conclusion of the induction
       ; (P(j) → (∀l. P(l)→P(right(l))) → ∀l. P(l)) を仮定してしまっているのに注意。
-      (assert (forall ((j Int)) (=> (is-child j)  (P j)) :pat { (m j k) } ))
+      (assert (forall ((j Int)) (! (=> (is-child j)  (P j)) :pattern ((m j k)) )))
 
       (check-sat) ; unsat
     (pop)
     (assert
       (exists ((j Int))
         (and (is-child j)
-             (= (min k) (m j k))
-             (< (min k) (m j (+ k 1))))))
+             (= (min2 k) (m j k))
+             (< (min2 k) (m j (+ k 1))))))
 
     ; Show that (num(min(k), k+1) < num(min(k), k)) holds.
     (push)
-      (assert (not (< (num (min k) (+ k 1)) (num (min k) k)))) ; negation of the goal
+      (assert (not (< (num (min2 k) (+ k 1)) (num (min2 k) k)))) ; negation of the goal
       (check-sat) ; unsat
     (pop)
 
@@ -309,10 +312,10 @@
 
 (assert
   (forall ((k Int))
-    (=> (is-nat k)
-        (exists ((i Int)) (< (min k) (m i k)) :pat { (m i k) })
-        (loop-variant-decrease k))
-    :pat { (min k) } ))
+    (! (=> (is-nat k)
+           (exists ((i Int)) (! (< (min2 k) (m i k)) :pattern ((m i k))))
+           (loop-variant-decrease k))
+       :pattern ((min2 k)) )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -320,16 +323,16 @@
 (declare-fun P (Int Int) Bool)
 (assert
   (forall ((lv1 Int) (lv2 Int))
-    (= (P lv1 lv2)
-       (forall ((k Int))
-         (=> (is-nat k)
-             (= lv1 (loop-variant-1 k))
-             (= lv2 (loop-variant-2 k))
-             (exists ((k1 Int))
-               (and (is-nat k1) (= (min k1) (max k1)))
-               :pat { (min k1) }))
-         :pat { (min k) }))
-    :pat { (P lv1 lv2) }))
+    (! (= (P lv1 lv2)
+          (forall ((k Int))
+            (! (=> (is-nat k)
+                   (= lv1 (loop-variant-1 k))
+                   (= lv2 (loop-variant-2 k))
+                   (exists ((k1 Int))
+       	          (! (and (is-nat k1) (= (min2 k1) (max2 k1)))
+                        :pattern ((min2 k1)))))
+               :pattern ((min2 k)))))
+       :pattern ((P lv1 lv2)))))
 
 ; Lemma
 ; Prove (∀v1,v2. P(v1,v2)) using well-founded induction on lt.
@@ -342,8 +345,8 @@
   ; induction hypothesis
   (assert 
     (forall ((u1 Int) (u2 Int))
-      (=> (lt u1 u2 v1 v2) (P u1 u2))
-      :pat { (lt u1 u2 v1 v2) }))
+      (! (=> (lt u1 u2 v1 v2) (P u1 u2))
+         :pattern ((lt u1 u2 v1 v2)))))
 
   ; negation of the goal
   (assert (not (P v1 v2)))
@@ -361,7 +364,7 @@
 
 ; Theorem: ∃k. min(k)=max(k)
 (push)
-  (assert (not (exists ((k1 Int)) (and (is-nat k1) (= (min k1) (max k1))))))
+  (assert (not (exists ((k1 Int)) (and (is-nat k1) (= (min2 k1) (max2 k1))))))
   (check-sat) ; unsat
 (pop)
 ; QED
